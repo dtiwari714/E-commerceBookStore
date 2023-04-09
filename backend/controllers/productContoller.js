@@ -31,7 +31,7 @@ exports.getProductsDetails=catchAsyncError(async(req,res,next)=>{
     res.status(200).json({
         status:true,
         product,
-        productCount
+        // productCount
     });
 });
 //Update Products
@@ -54,7 +54,7 @@ exports.updateProducts=catchAsyncError(async(req,res,next)=>{
         message:"Product update Done Successfully"
     })
 });
-//delete all products
+//delete products
 exports.deleteProducts=catchAsyncError(async(req,res,next)=>{
     const product=await Product.findById(req.params.id);
     if(!product){
@@ -81,8 +81,10 @@ exports.deleteProducts=catchAsyncError(async(req,res,next)=>{
 // });
 
 // Get All Product
-exports.getAllProducts =catchAsyncError(async (req, res) => {
-    const resultPerPage=5;
+exports.getAllProducts =catchAsyncError(async (req, res,next) => {
+
+    //return next(new Errorhandler("This is my Temp error",500));
+    const resultPerPage=8;
     const productCount= await Product.countDocuments();
     const apiFeature = new ApiFeatures(Product.find(), req.query)
       .search()
