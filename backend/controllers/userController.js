@@ -3,7 +3,8 @@ const catchAsyncError=require("../middleware/catchAsyncError");
 const User=require("../models/userModel");
 const sendToken = require("../utils/jwtToken");
 const sendEmail=require("../utils/sendEmail")
-const crypto=require("crypto")
+const crypto=require("crypto");
+const ErrorHandler = require("../utils/errorhandler");
 
 
 //register A user
@@ -124,7 +125,7 @@ exports.resetPassword=catchAsyncError(async(req,res,next)=>{
   });
 
   if(!user){
-    return next(new Errorhandler("REset password Token is invalid or has been expired",404));
+    return next(new Errorhandler("Reset password Token is invalid or has been expired",404));
   }
   if(req.body.password !== req.body.confirmPassword){
     return next(new Errorhandler("Password Does not matched",400));
@@ -136,4 +137,116 @@ exports.resetPassword=catchAsyncError(async(req,res,next)=>{
 
   await user.save();
   sendToken(user,200,res);
+});
+
+//Get user detail
+// This route only that people excess who is logged in
+exports.getUserDetails = catchAsyncError(async(req,res,next)=>{
+  const user = await User.findById(req.user.id);
+  res.status(200).json({
+    success:true,
+    user,
+  });
+})
+
+//Update User Password
+exports.updatePassword = catchAsyncError(async (req, res, next) => {
+  const user = await User.findById(req.user.id).select("+password");
+
+  const isPasswordMatched = await user.comparePassword(req.body.oldPassword);
+
+  if (!isPasswordMatched) {
+    return next(new ErrorHander("Old password is incorrect", 400));
+  }
+
+  if (req.body.newPassword !== req.body.confirmPassword) {
+    return next(new ErrorHander("password does not match", 400));
+  }
+
+  user.password = req.body.newPassword;
+
+  await user.save();
+
+  sendToken(user, 200, res);
+});
+
+//Update user profile
+exports.updateProfile = catchAsyncError(async (req, res, next) => {
+
+  const newUserData={
+    name :req.body.name,
+    email:req.body.email,
+  }
+  //we will add cloudinary later
+  const user = await User.findByIdAndUpdate(req.user.id,newUserData,{
+    new:true,
+    runValidators:true,
+    userFindModify:false
+  })
+
+  res.status(200).json({
+    success:true,
+  });
+});
+
+//Get All Users details (admin) admin ko kisi ka bhi details dekhna ho.
+exports.getAllUser = catchAsyncError(async(req,res,next)=>{
+ const users = await User.find();
+
+  res.status(200).json({
+    success:true,
+    users,
+  });
+});
+
+//Get single User details (admin)
+exports.getSingleUser = catchAsyncError(async(req,res,next)=>{
+ const user = await User.findById(req.params.id);
+
+ if(!user){
+  return next(
+    new ErrorHander(`User does not exist with Id:${req.params.id}`))
+ }
+  res.status(200).json({
+    success:true,
+    user,
+  });
+});
+
+//Update User Role --Admin //Mtlb user ko admin me update karsakte hai.
+exports.updateUserRole = catchAsyncError(async (req, res, next) => {
+
+  const newUserData={
+    name:req.body.name,
+    email:req.body.email,
+    role:req.body.role,
+  }
+  
+  const user = await User.findByIdAndUpdate(req.params.id,newUserData,{
+    new:true,
+    runValidators:true,
+    userFindModify:false
+  })
+
+  res.status(200).json({
+    success:true,
+  });
+});
+
+//Delete User --Admin //Admin user ko delete karsakta hai.
+exports.deleteUser = catchAsyncError(async (req, res, next) => {
+
+  const user = await User.findById(req.params.id);
+  //we will remove cloudinary later
+  if(!user){
+    return next (
+      new ErrorHander(`User doesn't exist with Id: ${req.params.id}`,400)
+    );
+  }
+  await User.findByIdAndDelete(req.params.id);
+  
+  res.status(200).json({
+    success:true,
+    message:"User deleted successfully",
+  });
 });
